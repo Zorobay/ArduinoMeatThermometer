@@ -14,19 +14,32 @@
 Adafruit_SSD1306 display(128, 64,
                          OLED_DIN, OLED_CLK, OLED_DC, OLED_RES, OLED_CS);
 
-void setup()
-{
+
+void initDisplay() {
+
+  /*
+  OLED displays need a higher voltage internally (around 7-9V) to drive the pixels, even though they're powered from 3.3V. 
+  The SSD1306 chip has a built-in circuit called a charge pump that steps the voltage up internally — SWITCHCAPVCC tells it to use that internal charge pump.
+  */
   display.begin(SSD1306_SWITCHCAPVCC);
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 24);
-  // display.println("Hello!");
-  // display.display();
+}
 
+void initSerial() {
+  // Start serial communication at 115200 baud for debug output (configured in platformio.ini)
   Serial.begin(115200);
+  // Set ADC to 12-bit resolution (readings from 0 to 4095)
   analogReadResolution(12);
+  // Set ADC input range to 0-3.3V (default is 0-1V)
   analogSetAttenuation(ADC_11db);
+}
+
+void setup()
+{
+  initDisplay();
+  initSerial();
 }
 
 void loop()
