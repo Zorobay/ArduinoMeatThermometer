@@ -2,6 +2,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
+#include <math.h>
 
 #define OLED_DIN 18
 #define OLED_CLK 5
@@ -9,7 +10,9 @@
 #define OLED_RES 15
 #define OLED_CS 33
 
-#define THERM_PIN 34 // A2
+#define THERM_PIN 34 // A2 on the ESP32
+
+#define R_FIXED = 100000
 
 Adafruit_SSD1306 display(128, 64,
                          OLED_DIN, OLED_CLK, OLED_DC, OLED_RES, OLED_CS);
@@ -38,8 +41,16 @@ void initSerial() {
 
 void setup()
 {
-  initDisplay();
   initSerial();
+  initDisplay();
+}
+
+/*
+Uses Steinhart-Hart equation to estimate temperature from resistance
+*/
+float calcTemperature(int R, float A, float B, float C) {
+  float denom = A + B * log(R) + C * pow(log(R), 3);
+  return 1 / denom;
 }
 
 void loop()

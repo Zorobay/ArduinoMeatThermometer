@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="46" height="165" viewBox="-1 -1 46 165">
+  <path d="M 44 1 Q 24 1 14 6 Q 4 11 4 21 Q 4 31 4 154.29"
+        fill="none"
+        stroke="#b3becd"
+        stroke-width="3"
+        stroke-miterlimit="10"/>
+  <path d="M 1 148.65 L 4 157.65 L 7 148.65"
+        fill="none"
+        stroke="#b3becd"
+        stroke-width="3"
+        stroke-miterlimit="10"/>
+</svg>
