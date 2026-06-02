@@ -1,11 +1,16 @@
 ﻿import csv
 import sys
+import platform
 from datetime import datetime
 
 import pyqtgraph as pg
 import serial
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton
+
+def get_serial_port() -> serial.serialjava.Serial:
+    name = 'COM3' if platform.system() == 'Windows' else '/dev/ttyUSB0'
+    return serial.Serial(name, 115200, timeout=1)
 
 
 def write_csv_data(data: dict[float, tuple[float, float]]):
@@ -47,7 +52,7 @@ class CentralWidget(QWidget):
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self._read_serial)
         self.update_timer.start(100)
-        self.ser = serial.Serial('COM3', 115200, timeout=1)
+        self.ser = get_serial_port()
         self.x = []
         self.y = []
         self.data = {}
