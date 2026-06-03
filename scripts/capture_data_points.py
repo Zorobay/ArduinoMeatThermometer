@@ -1,16 +1,23 @@
 ﻿import csv
-import sys
 import platform
+import sys
 from datetime import datetime
 
 import pyqtgraph as pg
 import serial
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton
+from serial import Serial
+from serial.serialutil import SerialException
 
-def get_serial_port() -> serial.serialjava.Serial:
+
+def get_serial_port() -> Serial | None:
     name = 'COM3' if platform.system() == 'Windows' else '/dev/ttyUSB0'
-    return serial.Serial(name, 115200, timeout=1)
+    try:
+        return serial.Serial(name, 115200, timeout=1)
+    except SerialException as e:
+        print(f'Error reading serial port: {e}')
+        return None
 
 
 def write_csv_data(data: dict[float, tuple[float, float]]):
@@ -24,7 +31,7 @@ def write_csv_data(data: dict[float, tuple[float, float]]):
         writer = csv.writer(f, delimiter=';')
         writer.writerow(headings)
         writer.writerows(rows)
-    print(f"Wrote output to {filename}")
+    print(f"Wrote {len(rows)} lines of output to {filename}")
 
 
 class CentralWidget(QWidget):
@@ -43,19 +50,23 @@ class CentralWidget(QWidget):
         self.temp_button.clicked.connect(self._on_temperature_added)
         self.temp_input.returnPressed.connect(self._on_temperature_added)
 
+        self.start_button = QPushButton("Start")
+        self.start_button.setStyleSheet("background-color: green;")
         self.stop_button = QPushButton("Stop")
         self.stop_button.clicked.connect(self._on_stop_button_clicked)
+        self.start_button.clicked.connect(self._on_start_button_clicked)
+        layout.addWidget(self.start_button)
         layout.addWidget(self.stop_button)
 
         self.setLayout(layout)
 
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self._read_serial)
-        self.update_timer.start(100)
-        self.ser = get_serial_port()
+        self.serial_port = get_serial_port()
         self.x = []
         self.y = []
         self.data = {}
+        self.temp_markers = []
         self.plot = self.plot_widget.plot(self.x, self.y, pen='y')
 
     def add_plot_point(self, y):
@@ -77,34 +88,45 @@ class CentralWidget(QWidget):
             label=f'{temp}℃',
         )
         self.plot_widget.addItem(line)
+        self.temp_markers.append(line)
         if not self.data[x]:
             raise Exception(f"No data at x = {x}")
 
-        y,_ = self.data[x]
-        self.data[x] = y,temp
-
+        y, _ = self.data[x]
+        self.data[x] = y, temp
+        
+    def reset(self):
+        self.x = []
+        self.y = []
+        self.data = {}
+        self.serial_port.reset_input_buffer()
+        for marker in self.temp_markers:
+            self.plot_widget.removeItem(marker)
+        self.temp_markers = []
+        self.plot.setData(self.x, self.y)
+        
     def _read_serial(self):
-        line = self.ser.readline().decode('utf-8').strip()
+        line = self.serial_port.readline().decode('utf-8').strip()
         if line and line.isnumeric():
             self.add_plot_point(int(line))
 
     def _on_temperature_added(self):
         temp_input = self.temp_input.text().strip()
         if temp_input:
-            temp_input = temp_input.replace(',','.')
+            temp_input = temp_input.replace(',', '.')
             temp_input = float(temp_input)
             self.add_temp_marker(temp_input)
 
+    def _on_start_button_clicked(self):
+        print("Starting...")
+        if self.serial_port:
+            self.reset()
+            self.update_timer.start(100)
+        else:
+            print(f"Can't start, as serial is not initialized!")
+
     def _on_stop_button_clicked(self):
         print("Stopping...")
-        print()
-        print(f"Data points: {len(self.data)}")
-        print()
-        for x, tup in self.data.items():
-            y = tup[0]
-            temp = tup[1]
-            print(f"x = {x}, y = {y}, temp = {temp}")
-
         self.update_timer.stop()
         write_csv_data(self.data)
 
@@ -112,7 +134,7 @@ class CentralWidget(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = QMainWindow()
-    window.resize(1200,600)
+    window.resize(1200, 600)
     central_widget = CentralWidget()
     window.setCentralWidget(central_widget)
     window.show()
